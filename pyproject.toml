@@ -1,0 +1,10 @@
+[project]
+name = "WeatherCaster"
+version = "1.0.0"
+dependencies = [
+    "pydantic-ai>=0.2.4",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
