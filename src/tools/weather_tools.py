@@ -122,7 +122,18 @@ class WeatherAPIClient:
             if forecast_type_api == ForecastType.CURRENT:
                 return WeatherData(**response_json)
             elif forecast_type_api == ForecastType.HOURLY or forecast_type_api == ForecastType.TOMORROW:
-                # Note: TOMORROW enum member also uses the HOURLY API endpoint
+                # limit the number of hourly forecast items.
+                # The API can return up to 96 hourly forecasts (4 days).
+                # We cap it to MAX_HOURLY_FORECAST_ITEMS (e.g., X hours)
+                # to provide a more manageable dataset to the LLM. The context lenght
+                # is exceeded in my testing with llama3.1 for already 12 items
+                MAX_HOURLY_FORECAST_ITEMS = 6 
+
+                if 'list' in response_json and isinstance(response_json['list'], list):
+                    response_json['list'] = response_json['list'][:MAX_HOURLY_FORECAST_ITEMS]
+                    # Update to new number of items
+                    if 'cnt' in response_json:
+                        response_json['cnt'] = len(response_json['list'])
                 return HourlyForecastData(**response_json)
             elif forecast_type_api == ForecastType.DAILY:
                 return DailyForecastData(**response_json)

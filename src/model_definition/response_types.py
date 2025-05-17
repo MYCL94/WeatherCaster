@@ -62,6 +62,7 @@ class Sys(BaseModel):
     sunrise: int = Field(..., description="Sunrise time, unix, UTC")
     sunset: int = Field(..., description="Sunset time, unix, UTC")
 
+# The structure is taken from https://openweathermap.org/current
 class WeatherData(BaseModel):
     """Represents detailed weather data."""
     coord: Coordinates = Field(..., description="Latitude and longitude of the location")
@@ -86,6 +87,12 @@ class WeatherData(BaseModel):
         return datetime.fromtimestamp(self.dt, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
 
 # --- Models for Hourly Forecast ---
+
+class PartOfDay(BaseModel):
+    """Represents the part of the day."""
+    pod : str = Field(..., description="Part of the day (pod: d for day or n for night)")
+
+# The structure is taken from https://openweathermap.org/api/hourly-forecast
 class HourlyForecastItem(BaseModel):
     """Represents an hourly forecast item."""
     dt: int = Field(..., description="Time of data forecasted, unix, UTC")
@@ -97,7 +104,7 @@ class HourlyForecastItem(BaseModel):
     pop: Optional[float] = Field(None, description="Probability of precipitation")
     rain: Optional[Rain] = Field(None, description="Rain volume for last 3 hours, mm")
     snow: Optional[float] = Field(None, description="Snow volume for last 3 hours, mm")
-    sys: Optional[Sys] = Field(None, description="Part of the day (pod: d or n)")
+    sys: Optional[PartOfDay] = Field(None, description="Part of the day (pod: d for day or n for night)")
     dt_txt: str = Field(..., description="Data/time of calculation, UTC")
 
     @computed_field
@@ -105,6 +112,9 @@ class HourlyForecastItem(BaseModel):
     def dt_human_readable(self) -> str:
         """Human-readable date and time (UTC) of the forecast, derived from 'dt'."""
         return datetime.fromtimestamp(self.dt, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
+
+# --- Models for City Information ---
+
 
 class CityInfo(BaseModel):
     """Represents information about a city."""
@@ -141,6 +151,7 @@ class DailyFeelsLike(BaseModel):
     eve: float = Field(..., description="Evening feels like temperature")
     morn: float = Field(..., description="Morning feels like temperature")
 
+#The structure is taken from https://openweathermap.org/forecast16
 class DailyForecastItem(BaseModel):
     """Represents a daily forecast item."""
     dt: int = Field(..., description="Time of data forecasted, unix, UTC")

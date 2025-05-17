@@ -9,6 +9,7 @@ from config import env
 
 class WeatherCaster:
     def __init__(self) -> None:
+        """Initializes the WeatherCaster."""
         load_dotenv() # Load environment variables from .env
 
         #   1. Setup local LLM with Config()
@@ -28,7 +29,12 @@ class WeatherCaster:
 
 
     async def get_response(self, user_query: str) -> AsyncGenerator:
-        """
-        Gets a response from the chatbot for a given user query.
+        """Gets a response from the chatbot for a given user query.
+
+        Args:
+            user_query (str): The user's query or question.
+
+        Returns:
+            Response from LLM
         """
         yield await self.agent.run(user_query)
