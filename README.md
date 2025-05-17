@@ -64,6 +64,7 @@ The WeatherCaster chatbot operates through the following flow:
 ### Prerequisites
 
 - Python 3.12
+- OpenWeatherMap [API Key](https://openweathermap.org/appid)
 - [Ollama](https://ollama.com/download) installed and running.
   - Ensure you have pulled a model compatible with the agent (e.g., `ollama pull llama3.1:latest` or `ollama pull mistral`). The model ID will be needed in the `.env` file.
 
