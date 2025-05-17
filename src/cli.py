@@ -1,5 +1,4 @@
-import asyncio
-from src.weather_caster import WeatherCaster
+from weather_caster import WeatherCaster
 
 async def run_cli() -> None:
     """Runs the WeatherCaster Chatbot CLI."""
@@ -26,5 +25,14 @@ async def run_cli() -> None:
         async for response in chatbot.get_response(user_input):
             print(f"WeatherCaster: {response.output}")
 
-if __name__ == "__main__":
+def run_cli_sync_wrapper() -> None:
+    """Runs the WeatherCaster Chatbot CLI synchronously.
+    
+    Synchronous wrapper for the [project.scripts] entry point.
+    """
+    import asyncio
     asyncio.run(run_cli())
+
+if __name__ == "__main__":
+    """ To run it directly with python src/cli.py during development."""
+    run_cli_sync_wrapper()

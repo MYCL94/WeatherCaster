@@ -2,7 +2,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, AliasChoices, computed_field
 from enum import Enum
 from datetime import datetime, timezone
-from src.config import env
+from config import env
 
 class ForecastType(str, Enum):
     """Lists all available forecast types and their corresponding API endpoint URLs."""
@@ -50,6 +50,7 @@ class Rain(BaseModel):
     """Represents rain volume data."""
     h1: Optional[float] = Field(None, validation_alias=AliasChoices('1h', 'rain.1h'), description="Rain volume for the last 1 hour, mm")
     h3: Optional[float] = Field(None, validation_alias=AliasChoices('3h', 'rain.3h'), description="Rain volume for the last 3 hours, mm")
+    # AliasChoice is necessary because starting the variable with numbers such as '1h' and '3h' are not allowed
 
 class Clouds(BaseModel):
     """Represents cloudiness information."""
@@ -96,7 +97,7 @@ class HourlyForecastItem(BaseModel):
     pop: Optional[float] = Field(None, description="Probability of precipitation")
     rain: Optional[Rain] = Field(None, description="Rain volume for last 3 hours, mm")
     snow: Optional[float] = Field(None, description="Snow volume for last 3 hours, mm")
-    sys: Optional[dict] = Field(None, description="Part of the day (pod: d or n)")
+    sys: Optional[Sys] = Field(None, description="Part of the day (pod: d or n)")
     dt_txt: str = Field(..., description="Data/time of calculation, UTC")
 
     @computed_field
@@ -155,7 +156,7 @@ class DailyForecastItem(BaseModel):
     gust: Optional[float] = Field(None, description="Wind gust. Unit Default: meter/sec")
     clouds: Optional[int] = Field(None, description="Cloudiness, %")
     pop: Optional[float] = Field(None, description="Probability of precipitation")
-    rain: Optional[float] = Field(None, description="Rain volume, mm")
+    rain: Optional[Rain] = Field(None, description="Rain volume, mm")
     snow: Optional[float] = Field(None, description="Snow volume, mm")
 
     @computed_field

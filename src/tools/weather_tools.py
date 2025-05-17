@@ -1,9 +1,9 @@
 
 import requests
 
-from src.model_definition.response_types import (Coordinates, GeocodingResult,
+from model_definition.response_types import (Coordinates, GeocodingResult,
       WeatherData, ForecastType, HourlyForecastData, DailyForecastData)
-from src.config import env
+from config import env
 
 
 class WeatherAPIClient:

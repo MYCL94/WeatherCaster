@@ -3,9 +3,9 @@ from dotenv import load_dotenv
 from pydantic_ai import Agent, Tool
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
-from src.tools.weather_tools import WeatherAPIClient
+from tools.weather_tools import WeatherAPIClient
 from agent_prompt import AGENT_SYSTEM_PROMPT
-from src.config import env
+from config import env
 
 class WeatherCaster:
     def __init__(self) -> None:
