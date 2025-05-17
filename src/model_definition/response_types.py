@@ -167,7 +167,7 @@ class DailyForecastItem(BaseModel):
     gust: Optional[float] = Field(None, description="Wind gust. Unit Default: meter/sec")
     clouds: Optional[int] = Field(None, description="Cloudiness, %")
     pop: Optional[float] = Field(None, description="Probability of precipitation")
-    rain: Optional[Rain] = Field(None, description="Rain volume, mm")
+    rain: Optional[float] = Field(None, description="Rain volume, mm") 
     snow: Optional[float] = Field(None, description="Snow volume, mm")
 
     @computed_field
