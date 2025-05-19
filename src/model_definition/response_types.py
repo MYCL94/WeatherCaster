@@ -1,15 +1,6 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field, AliasChoices, computed_field
-from enum import Enum
 from datetime import datetime, timezone
-from config import env
-
-class ForecastType(str, Enum):
-    """Lists all available forecast types and their corresponding API endpoint URLs."""
-    CURRENT = env.WEATHER_API_CURRENT # Everything related to today
-    TOMORROW = env.WEATHER_API_HOURLY # Everything related to tomorrow
-    HOURLY = env.WEATHER_API_HOURLY # Hourly forecast for 4 days (96 timestamps)
-    DAILY = env.WEATHER_API_DAILY # Daily Forecast 16 Days
 
 class Coordinates(BaseModel):
     """Represents the latitude and longitude of a location."""

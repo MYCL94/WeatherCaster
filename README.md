@@ -78,23 +78,11 @@ cd WeatherCaster
 
 Before updating the environment variables, copy the `template.env` and rename it to `.env`.
 
-### Geocoding API Endpoint (OpenWeatherMap)
-```
-GEO_API="http://api.openweathermap.org/geo/1.0/direct"
-```
-
 ### OpenWeatherMap API Key 
 Get yours from https://openweathermap.org/appid
 ```
 WEATHER_API_KEY="YOUR_OPENWEATHERMAP_API_KEY"
 ``` 
-
-### OpenWeatherMap API Endpoints (as used by the application)
-```
-WEATHER_API_CURRENT="https://api.openweathermap.org/data/2.5/weather"
-WEATHER_API_HOURLY="https://api.openweathermap.org/data/2.5/forecast
-WEATHER_API_DAILY="https://api.openweathermap.org/data/2.5/forecast/daily
-```
 
 ### LLM Configuration (Ollama)
 ```
@@ -147,8 +135,8 @@ Type quit or exit to stop the chatbot.
 
 The behavior and capabilities of the WeatherCaster agent are heavily defined by the system prompt located in src/agent_prompt.py. This prompt instructs the LLM on:
 
-Its persona ("WeatherCaster").
-Its sole capability: providing weather forecasts using the get_weather_forecast tool.
-How to interpret user queries for location and forecast type (current, hourly, daily, tomorrow).
-Specific response formatting and error handling.
-Strict limitations on answering non-weather-related questions.
+* Its persona ("WeatherCaster").
+* Its sole capability: providing weather forecasts using the get_weather_forecast tool.
+* How to interpret user queries for location and forecast type (current, hourly, daily, tomorrow).
+* Specific response formatting and error handling.
+* Strict limitations on answering non-weather-related questions.

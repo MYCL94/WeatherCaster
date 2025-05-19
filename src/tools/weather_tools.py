@@ -1,15 +1,22 @@
-
 import requests
+from config import env
+from enum import Enum
 
 from model_definition.response_types import (Coordinates, GeocodingResult,
-      WeatherData, ForecastType, HourlyForecastData, DailyForecastData)
-from config import env
+      WeatherData, HourlyForecastData, DailyForecastData)
 
+class ForecastType(str, Enum):
+    """Lists all available forecast types and their corresponding API endpoint URLs."""
+    CURRENT = "https://api.openweathermap.org/data/2.5/weather" # Everything related to today
+    TOMORROW = "https://pro.openweathermap.org/data/2.5/forecast/hourly" # In case LLM chooses, everything related to tomorrow same as hourly
+    HOURLY = "https://pro.openweathermap.org/data/2.5/forecast/hourly" # Hourly forecast for 4 days (max. 96 timestamps)
+    DAILY = "https://api.openweathermap.org/data/2.5/forecast/daily" # Daily Forecast 16 Days
 
 class WeatherAPIClient:
     def __init__(self) -> None:
         self.api_key = env.WEATHER_API_KEY
-        self.geocoding_url = env.GEO_API
+        self.geocoding_url = "http://api.openweathermap.org/geo/1.0/direct"
+        self.max_hourly_forecast_items = env.MAX_HOURLY_FORECAST_ITEMS
 
     def _get_coordinates(self, location_name: str) -> GeocodingResult | None:
         """Gets coordinates (latitude and longitude), name, and country for a given location.
@@ -126,8 +133,8 @@ class WeatherAPIClient:
                 # The API can return up to 96 hourly forecasts (4 days).
                 # We cap it to MAX_HOURLY_FORECAST_ITEMS (e.g., X hours)
                 # to provide a more manageable dataset to the LLM. The context lenght
-                # is exceeded in my testing with llama3.1 for already 12 items
-                MAX_HOURLY_FORECAST_ITEMS = 6 
+                # is exceeded in my testing with llama3.1:8b for already 12 items
+                MAX_HOURLY_FORECAST_ITEMS = self.max_hourly_forecast_items
 
                 if 'list' in response_json and isinstance(response_json['list'], list):
                     response_json['list'] = response_json['list'][:MAX_HOURLY_FORECAST_ITEMS]

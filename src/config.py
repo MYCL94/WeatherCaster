@@ -9,16 +9,11 @@ class APISettings(BaseSettings):
     """
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 
-    # Geocoding API
-    GEO_API: str = Field(..., description="API for geocoding")
-
     # Weather API KEY
     WEATHER_API_KEY: str = Field(..., description="API key for weather data")
 
     # Weather API Endpoints
-    WEATHER_API_CURRENT: str = Field(..., description="API for current weather forecasts")
-    WEATHER_API_HOURLY: str = Field(..., description="API for hourly weather forecasts")
-    WEATHER_API_DAILY: str = Field(..., description="API for daily weather forecasts")
+    MAX_HOURLY_FORECAST_ITEMS: int = Field(default=24, description="Maximum number of hourly forecast items to return")
 
     # Model configuration
     MODEL_ID: str = Field(..., description="ID of the LLM model to use")
