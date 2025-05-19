@@ -104,8 +104,16 @@ class WeatherAPIClient:
                 - DailyForecastData for daily forecasts.
                 Returns None if data cannot be retrieved or an error occurs.
         """
-        georesult = self._get_coordinates(location_name)
-        forecast_type_api = self._get_forecast_type(forecast_type)
+        if location_name:
+            georesult = self._get_coordinates(location_name)
+        else:
+            print("No location name specified.")
+            return None
+        if forecast_type:
+            forecast_type_api = self._get_forecast_type(forecast_type)
+        else:
+            print("No forecast type specified.")
+            return None
         
         if not georesult or not georesult.coordinates or georesult.coordinates.lat is None or georesult.coordinates.lon is None:
             print(f"Could not get valid coordinates for {location_name}")
