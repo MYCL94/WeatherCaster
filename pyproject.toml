@@ -38,5 +38,5 @@ classifiers = [
 
 
 [project.scripts]
-weathercaster-cli = "weather_caster.cli:run_cli_sync_wrapper"
-weathercaster-gui = "weather_caster.gradio_ui:run_gradio_ui_sync_wrapper"
+weathercaster-cli = "cli:run_cli_sync_wrapper"
+weathercaster-gui = "gradio_ui:run_gradio_ui_sync_wrapper"
