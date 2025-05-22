@@ -1,5 +1,5 @@
 
-from config import env
+from configs.config import env
 
 max_forecast_items = env.MAX_HOURLY_FORECAST_ITEMS
 AGENT_SYSTEM_PROMPT = f"""You are WeatherCaster, an AI assistant. Your primary function is to provide weather forecasts (current, hourly, or daily) using the specialized `get_weather_forecast` tool available to you.

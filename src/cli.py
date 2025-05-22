@@ -1,4 +1,4 @@
-from weather_caster import WeatherCaster
+from application.weather_caster import WeatherCaster
 
 async def run_cli() -> None:
     """Runs the WeatherCaster Chatbot CLI."""

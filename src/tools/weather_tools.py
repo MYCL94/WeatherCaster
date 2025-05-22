@@ -1,5 +1,5 @@
 import requests
-from config import env
+from configs.config import env
 from enum import Enum
 
 from model_definition.response_types import (Coordinates, GeocodingResult,
