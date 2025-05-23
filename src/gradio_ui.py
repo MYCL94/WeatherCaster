@@ -76,7 +76,7 @@ class GradioWeatherUI:
         else:
             print(f"Using local LLM: {llm_config.model_name} (via configured host/port)")
             print("Ensure your local LLM server (e.g., Ollama) is running and the model is available.")
-        iface.launch(share=False, server_name="0.0.0.0", server_port=7860)
+        iface.launch(share=False, server_name="0.0.0.0", server_port=7860, pwa=True)
 
 def run_gradio_ui_sync_wrapper() -> None:
     """Synchronous wrapper to launch the Gradio UI.
