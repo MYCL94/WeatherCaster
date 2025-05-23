@@ -1,5 +1,6 @@
 """Load environment variables."""
 
+import logging
 import os
 from typing import Any
 from pydantic import BaseModel, Field
@@ -7,6 +8,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.models.gemini import GeminiModel
+
+logger = logging.getLogger(__name__)
 class APISettings(BaseSettings):
     """
     Manages API configurations loaded from environment variables.
@@ -49,7 +52,7 @@ def get_llm_model() -> LLMDetails:
     openai_api_key = os.getenv("OPENAI_API_KEY")
     gemini_api_key = os.getenv("GEMINI_API_KEY")
     if openai_api_key and gemini_api_key:
-        print("Please set only one of OPENAI_API_KEY or GEMINI_API_KEY environment variables.")
+        logger.critical("Configuration Error: Both OPENAI_API_KEY and GEMINI_API_KEY are set. Please set only one.")
         exit(1)
 
     model_name = env.MODEL_ID
@@ -57,14 +60,17 @@ def get_llm_model() -> LLMDetails:
     if openai_api_key and openai_api_key.strip() != "":
         model = OpenAIModel(model_name=model_name)
         description = f"Powered by OpenAI LLM: [{model_name}](https://platform.openai.com/docs/models)."
+        logger.info(f"Using OpenAI LLM: {model_name}")
         is_direct = True
     elif gemini_api_key and gemini_api_key.strip() != "":
         model = GeminiModel(model_name=model_name)
         description = f"Powered by Gemini LLM: [{model_name}](https://ai.google.dev/gemini-api/docs/)."
+        logger.info(f"Using Gemini LLM: {model_name}")
         is_direct = True
     else:
         _provider = OpenAIProvider(base_url=f"{env.MODEL_HOST}:{env.MODEL_PORT}/v1")
         model = OpenAIModel(model_name=model_name, provider=_provider)
+        logger.info(f"Using local LLM: {model_name} via {env.MODEL_HOST}:{env.MODEL_PORT}")
         description = (
             f"Powered by local LLM: [{model_name}](https://ollama.com/) via {env.MODEL_HOST}:{env.MODEL_PORT}.\n"
             f"Ensure your local LLM server (e.g., Ollama) is running and the model is available."

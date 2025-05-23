@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 from typing import List
 import httpx
@@ -6,6 +7,8 @@ from configs.config import env
 
 from model_definition.final_response import CurrentWeather, DailyWeather, HourlyWeather, WeatherForecast, WindInfo, DaylightInfo
 from model_definition.response_types import Coordinates, GeocodingResult, WeatherData, HourlyForecastData, DailyForecastData
+
+logger = logging.getLogger(__name__)
 
 class ForecastType(str, Enum):
     """Lists all available forecast types and their corresponding API endpoint URLs."""
@@ -87,13 +90,13 @@ class WeatherAPIClient:
                                            country=location_data.get('country')
                     )
                 else:
-                    print(f"Geocoding: No coordinates found for {location_name}")
+                    logger.warning(f"Geocoding: No coordinates found for {location_name}")
                     return None
         except httpx.RequestError as e:
-            print(f"Geocoding request error for {location_name}: {e}")
+            logger.error(f"Geocoding request error for {location_name}: {e}", exc_info=True)
             return None
         except Exception as e:
-            print(f"Error during geocoding for {location_name}: {e}")
+            logger.error(f"Error during geocoding for {location_name}: {e}", exc_info=True)
             return None
 
     def _transform_api_data_to_weather_forecast(self,
@@ -173,7 +176,7 @@ class WeatherAPIClient:
         if current_weather or hourly_forecast_list or daily_forecast_list:
             return WeatherForecast(current=current_weather, hourly=hourly_forecast_list, daily=daily_forecast_list)
         else:
-            print(f"Failed to retrieve sufficient weather data for {location_name} to transform.")
+            logger.warning(f"Failed to retrieve sufficient weather data for {location_name} to transform.")
             return None
 
     async def get_weather_forecast(self, location_name: str) -> WeatherForecast | None:
@@ -193,7 +196,7 @@ class WeatherAPIClient:
         """
         georesult = await self._get_coordinates(location_name)
         if not georesult or not georesult.coordinates:
-            print(f"Could not get valid coordinates for {location_name}")
+            logger.warning(f"Could not get valid coordinates for {location_name}. Cannot fetch weather.")
             return None
 
         lat, lon = georesult.coordinates.lat, georesult.coordinates.lon
@@ -215,9 +218,9 @@ class WeatherAPIClient:
                 current_response.raise_for_status()
                 current_weather_api_model = WeatherData(**current_response.json())
             except httpx.RequestError as e:
-                print(f"Error fetching current weather for {location_name}: {e}")
+                logger.error(f"Error fetching current weather for {location_name}: {e}", exc_info=True)
             except Exception as e:
-                print(f"Error parsing current weather data for {location_name}: {e}")
+                logger.error(f"Error parsing current weather data for {location_name}: {e}", exc_info=True)
 
             # 2. Fetch Hourly Forecast
             hourly_params = {
@@ -231,9 +234,9 @@ class WeatherAPIClient:
                 hourly_response.raise_for_status()
                 hourly_forecast_api_model = HourlyForecastData(**hourly_response.json())
             except httpx.RequestError as e:
-                print(f"Error fetching hourly forecast for {location_name}: {e}")
+                logger.error(f"Error fetching hourly forecast for {location_name}: {e}", exc_info=True)
             except Exception as e:
-                print(f"Error parsing hourly forecast data for {location_name}: {e}")
+                logger.error(f"Error parsing hourly forecast data for {location_name}: {e}", exc_info=True)
 
             # 3. Fetch Daily Forecast
             daily_params = {
@@ -248,9 +251,9 @@ class WeatherAPIClient:
                 daily_response.raise_for_status()
                 daily_forecast_api_model = DailyForecastData(**daily_response.json())
             except httpx.RequestError as e:
-                print(f"Error fetching daily forecast for {location_name}: {e}.")
+                logger.error(f"Error fetching daily forecast for {location_name}: {e}", exc_info=True)
             except Exception as e:
-                print(f"Error parsing daily forecast data for {location_name}: {e}")
+                logger.error(f"Error parsing daily forecast data for {location_name}: {e}", exc_info=True)
 
         # Transform the API data
         return self._transform_api_data_to_weather_forecast(

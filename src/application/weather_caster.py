@@ -1,3 +1,4 @@
+import logging
 from typing import AsyncGenerator
 from dotenv import load_dotenv
 from pydantic_ai import Agent, Tool
@@ -7,6 +8,8 @@ from tools.weather_tools import WeatherAPIClient
 from configs.agent_prompt import AGENT_SYSTEM_PROMPT
 from configs.config import get_llm_model
 
+logger = logging.getLogger(__name__)
+
 class WeatherCaster:
     def __init__(self) -> None:
         """Initializes the WeatherCaster."""
@@ -15,6 +18,7 @@ class WeatherCaster:
         #   2. Enter list of available tools.
         #   3. Use system prompt.
         self.llm_model = get_llm_model()
+        logger.info(f"WeatherCaster initialized with LLM: {self.llm_model.model_name}, Direct: {self.llm_model.is_direct}")
         self.weather_client = WeatherAPIClient()
         self.agent = Agent(model=self.llm_model.model,
                            tools=[Tool(self.weather_client.get_weather_forecast)
@@ -44,6 +48,8 @@ class WeatherCaster:
                     # str response
                     yield forecast_data.output
             else:
-                print("Could not retrieve weather forecast.")
+                logger.warning("Agent run completed but no forecast_data was returned.")
+                yield "Sorry, I could not retrieve any information for your query."
         except Exception as e:
-            print("Exception occurred during response generation. Error: {}".format(e))
+            logger.error(f"Exception occurred during agent response generation for query '{user_query}': {e}", exc_info=True)
+            yield "An unexpected error occurred while trying to get the weather forecast. Please try again."
