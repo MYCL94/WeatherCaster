@@ -8,8 +8,8 @@ class WindInfo(BaseModel):
     direction: int = Field(..., description="The direction from which the wind is blowing in degrees (0-360, where 0 is North).")
 
 class DaylightInfo(BaseModel):
-    sunrise: datetime = Field(..., description="The time of sunrise.")
-    sunset: datetime = Field(..., description="The time of sunset.")
+    sunrise: datetime = Field(..., description="The specific date and time of sunrise (UTC).")
+    sunset: datetime = Field(..., description="The specific date and time of sunset (UTC).")
 
 class CurrentWeather(BaseModel):
     location: str = Field(..., description="The geographical location for the weather data (e.g., 'Konya').")
