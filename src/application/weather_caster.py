@@ -1,4 +1,5 @@
 from typing import AsyncGenerator
+from dotenv import load_dotenv
 from pydantic_ai import Agent, Tool
 from application.formatting import format_weather_summary
 from model_definition.final_response import WeatherForecast
@@ -9,6 +10,7 @@ from configs.config import get_llm_model
 class WeatherCaster:
     def __init__(self) -> None:
         """Initializes the WeatherCaster."""
+        load_dotenv()
         #   1. Setup LLM with Config()
         #   2. Enter list of available tools.
         #   3. Use system prompt.
