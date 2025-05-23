@@ -1,7 +1,7 @@
 <h1 align="center"> WeatherCaster 🌦️: AI Weather Forecast Chatbot </h1>
 
 <p align="center">
-WeatherCaster is an AI-powered command-line chatbot that provides weather forecasts (current, hourly, and daily) using natural language queries. It leverages a local Large Language Model (LLM) via Ollama and fetches real-time weather data from the OpenWeatherMap API.
+WeatherCaster is an AI-powered chatbot that provides weather forecasts (current, hourly, and daily) using natural language queries. It can leverage local Large Language Models (LLMs) via Ollama, or connect to external providers like OpenAI and Gemini. It fetches real-time weather data from the OpenWeatherMap API and offers both a command-line interface (CLI) and a web-based graphical user interface (GUI) through Gradio.
 </p>
 
 <p align="center">
