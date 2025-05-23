@@ -77,7 +77,7 @@ class WeatherData(BaseModel):
         """Human-readable date and time (UTC) of data calculation, derived from 'dt'."""
         return datetime.fromtimestamp(self.dt, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
 
-# --- Models for Hourly Forecast ---
+# Models for Hourly Forecast
 
 class PartOfDay(BaseModel):
     """Represents the part of the day."""
@@ -104,8 +104,7 @@ class HourlyForecastItem(BaseModel):
         """Human-readable date and time (UTC) of the forecast, derived from 'dt'."""
         return datetime.fromtimestamp(self.dt, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
 
-# --- Models for City Information ---
-
+# Models for City Information 
 
 class CityInfo(BaseModel):
     """Represents information about a city."""
@@ -125,7 +124,7 @@ class HourlyForecastData(BaseModel):
     list: List[HourlyForecastItem] = Field(..., description="List of hourly forecast items")
     city: CityInfo = Field(..., description="Information about the city for the forecast")
 
-# --- Models for Daily Forecast ---
+#  Models for Daily Forecast
 class DailyTemp(BaseModel):
     """Represents daily temperature."""
     day: float = Field(..., description="Daytime temperature")
@@ -142,7 +141,7 @@ class DailyFeelsLike(BaseModel):
     eve: float = Field(..., description="Evening feels like temperature")
     morn: float = Field(..., description="Morning feels like temperature")
 
-#The structure is taken from https://openweathermap.org/forecast16
+# The structure is taken from https://openweathermap.org/forecast16
 class DailyForecastItem(BaseModel):
     """Represents a daily forecast item."""
     dt: int = Field(..., description="Time of data forecasted, unix, UTC")

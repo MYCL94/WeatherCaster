@@ -1,6 +1,7 @@
 import gradio as gr
 from application.weather_caster import WeatherCaster
-from configs.config import env
+from configs.weather_questions import example_questions
+
 
 
 # Ollama server (or other LLM provider) must be running with the specified model.
@@ -33,11 +34,7 @@ async def get_weather_response_for_gradio(user_query: str) -> str:
     try:
         # yield response object containing the LLM's output
         async for response_obj in chatbot.get_response(user_query):
-            if hasattr(response_obj, 'output'):
-                return response_obj.output
-            else:
-                # Fallback if the response object structure is unexpected
-                return "Received an unexpected response format from the agent."
+            return response_obj
         return "No response received from the agent. This might indicate an issue."
     except Exception as e:
         print(f"Error during agent interaction: {e}")
@@ -45,6 +42,7 @@ async def get_weather_response_for_gradio(user_query: str) -> str:
 
 def launch_gradio_interface() -> None:
     """Sets up and launches the Gradio web UI for WeatherCaster."""
+
     iface = gr.Interface(
         fn=get_weather_response_for_gradio,
         inputs=gr.Textbox(
@@ -59,32 +57,27 @@ def launch_gradio_interface() -> None:
         title="WeatherCaster 🌦️",
         description=(
             "Welcome to WeatherCaster! Ask for weather forecasts (current, hourly, daily).\n"
-            f"Powered by LLM: [{env.MODEL_ID}](https://ollama.com/). Ensure your LLM server is running at {env.MODEL_HOST}:{env.MODEL_PORT}.\n"
-            f"Weather data provided by [OpenWeatherMap](https://openweathermap.org/)."
+            + chatbot.llm_model.description + "\n"
+            + "Weather data provided by [OpenWeatherMap](https://openweathermap.org/)."
         ),
-        allow_flagging="never", # no data collection in current state
-        examples=[
-            ["What's the weather like in Palermo?"],
-            ["Konya and Phuket"],
-            ["Is it sunny in Madrid right now?"],
-            ["Hourly forecast for Tokyo"],
-            ["Weather in Rome tomorrow"],
-            ["Daily forecast for Sydney for the next 3 days"]
-        ],
-        theme="soft" # other themes "default", "huggingface", "gradio/monokai"
+        flagging_mode="never",
+        examples=example_questions,
+        theme="soft"
     )
     
     print("Launching WeatherCaster Gradio UI on http://127.0.0.1:7860 (or the next available port)...")
-    print(f"Using LLM: {env.MODEL_ID} from {env.MODEL_HOST}:{env.MODEL_PORT}")
-    print("Ensure your LLM server (e.g., Ollama) is running and the model is available.")
-    iface.launch()
+    if chatbot.llm_model.is_direct:
+        print(f"Using LLM: {chatbot.llm_model.model_name}")
+    else:
+        print(f"Using local LLM: {chatbot.llm_model.model_name} (via configured host/port)")
+        print("Ensure your local LLM server (e.g., Ollama) is running and the model is available.")
+    iface.launch(share=False, server_name="0.0.0.0", server_port=7860)
 
 def run_gradio_ui_sync_wrapper() -> None:
     """Synchronous wrapper to launch the Gradio UI.
 
     This function is used as an entry point in pyproject.toml's [project.scripts].
     """
-
     launch_gradio_interface()
 
 if __name__ == "__main__":

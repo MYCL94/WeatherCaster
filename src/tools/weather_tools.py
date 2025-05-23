@@ -1,9 +1,11 @@
-import requests
-from configs.config import env
+from datetime import datetime, timezone
+from typing import List
+import httpx
 from enum import Enum
+from configs.config import env
 
-from model_definition.response_types import (Coordinates, GeocodingResult,
-      WeatherData, HourlyForecastData, DailyForecastData)
+from model_definition.final_response import CurrentWeather, DailyWeather, HourlyWeather, WeatherForecast, WindInfo, DaylightInfo
+from model_definition.response_types import Coordinates, GeocodingResult, WeatherData, HourlyForecastData, DailyForecastData
 
 class ForecastType(str, Enum):
     """Lists all available forecast types and their corresponding API endpoint URLs."""
@@ -12,13 +14,48 @@ class ForecastType(str, Enum):
     HOURLY = "https://pro.openweathermap.org/data/2.5/forecast/hourly" # Hourly forecast for 4 days (max. 96 timestamps)
     DAILY = "https://api.openweathermap.org/data/2.5/forecast/daily" # Daily Forecast 16 Days
 
+def get_weather_emoji(icon_id: str) -> str:
+    """Maps an OpenWeatherMap icon ID to an appropriate emoji.
+    
+    Reference: https://openweathermap.org/weather-conditions
+    Args:
+        icon_id (str): The icon ID from the OpenWeatherMap API)
+    
+    Returns:
+        str: The corresponding emoji for the given icon ID.       
+    """
+    
+    icon_map = {
+        # Day icons
+        "01d": "☀️",  # clear sky
+        "02d": "🌤️",  # few clouds
+        "03d": "☁️",  # scattered clouds
+        "04d": "🌥️",  # broken clouds / overcast clouds
+        "09d": "🌦️",  # shower rain
+        "10d": "🌧️",  # rain
+        "11d": "⛈️",  # thunderstorm
+        "13d": "❄️",  # snow
+        "50d": "🌫️",  # mist
+        # Night icons
+        "01n": "🌙",  # clear sky
+        "02n": "☁️",  # few clouds
+        "03n": "☁️",  # scattered clouds
+        "04n": "🌥️",  # broken clouds / overcast clouds
+        "09n": "🌦️",  # shower rain
+        "10n": "🌧️",  # rain
+        "11n": "⛈️",  # thunderstorm
+        "13n": "❄️",  # snow
+        "50n": "🌫️",  # mist
+    }
+    return icon_map.get(icon_id, "❓") # Default emoji if icon_id is unknown
+
 class WeatherAPIClient:
     def __init__(self) -> None:
         self.api_key = env.WEATHER_API_KEY
         self.geocoding_url = "http://api.openweathermap.org/geo/1.0/direct"
         self.max_hourly_forecast_items = env.MAX_HOURLY_FORECAST_ITEMS
 
-    def _get_coordinates(self, location_name: str) -> GeocodingResult | None:
+    async def _get_coordinates(self, location_name: str) -> GeocodingResult | None:
         """Gets coordinates (latitude and longitude), name, and country for a given location.
 
         This tool is essential for converting a human-readable location name into
@@ -38,127 +75,187 @@ class WeatherAPIClient:
             'appid': self.api_key
         }
         try:
-            response = requests.get(self.geocoding_url, params=params)
-            response.raise_for_status()  # Raise an exception for HTTP errors
-            data = response.json()
+            async with httpx.AsyncClient() as client:
+                response = await client.get(self.geocoding_url, params=params)
+                response.raise_for_status()
+                data = response.json()
 
-            if data and isinstance(data, list) and len(data) > 0:
-                # Assuming the first result is the most relevant
-                location_data = data[0]
-                return GeocodingResult(coordinates=
-                                    (Coordinates(lat=location_data.get('lat'),
-                                                    lon=location_data.get('lon'))),
-                                    name=location_data.get('name'),
-                                    country=location_data.get('country'))
-            else:
-                print(f"Geocoding: No coordinates found for {location_name}")
-                return None
-        except requests.exceptions.RequestException as e:
+                if data and isinstance(data, list) and len(data) > 0:
+                    location_data = data[0]
+                    return GeocodingResult(coordinates=Coordinates(lat=location_data.get('lat'), lon=location_data.get('lon')),
+                                           name=location_data.get('name'),
+                                           country=location_data.get('country')
+                    )
+                else:
+                    print(f"Geocoding: No coordinates found for {location_name}")
+                    return None
+        except httpx.RequestError as e:
             print(f"Geocoding request error for {location_name}: {e}")
             return None
         except Exception as e:
             print(f"Error during geocoding for {location_name}: {e}")
             return None
-        
-    def _get_forecast_type(self, forecast_type: str) -> ForecastType | None:
-        """Gets the correct API endpoint URL for a given forecast type.
 
-        Args:
-            forecast_type (str): The type of forecast (e.g., "current", "hourly", "daily").
+    def _transform_api_data_to_weather_forecast(self,
+                                                location_name: str,
+                                                current_weather_api_model: WeatherData | None,
+                                                hourly_forecast_api_model: HourlyForecastData | None,
+                                                daily_forecast_api_model: DailyForecastData | None
+                                                ) -> WeatherForecast | None:
+        """Transforms raw API data into a WeatherForecast object.
+        
+        Args: 
+            location_name (str): The name of the location (e.g., "London", "Paris, FR").
+            currently_weather_api_model (WeatherData): Current weather data from the API.
+            hourly_forecast_api_model (HourlyForecastData): Hourly forecast data from the API.
+            daily_forecast_api_model (DailyForecastData): Daily forecast data from the API.
 
         Returns:
-            ForecastType | None: The API endpoint URL for the specified forecast type.
-                            Returns None if the forecast type is not recognized.
-                            Input `forecast_type` is case-insensitive.
+            WeatherForecast | None
         """
-        try:
-            # ("current" -> "CURRENT")
-            member_name = forecast_type.strip().upper()
+        current_weather: CurrentWeather | None = None
+        hourly_forecast_list: List[HourlyWeather] = []
+        daily_forecast_list: List[DailyWeather] = []
 
-            # Access the enum member by its name (ForecastType['CURRENT']).
-            enum_member = ForecastType[member_name]
+        if current_weather_api_model:
+            weather_item = current_weather_api_model.weather[0]
+            condition_str = weather_item.description.capitalize()
+            current_weather = CurrentWeather(
+                location=current_weather_api_model.name,
+                date_time=datetime.fromtimestamp(current_weather_api_model.dt, tz=timezone.utc),
+                condition=condition_str,
+                emoji=get_weather_emoji(weather_item.icon),
+                temperature=current_weather_api_model.main.temp,
+                feels_like_temperature=current_weather_api_model.main.feels_like,
+                high_temperature=current_weather_api_model.main.temp_max,
+                low_temperature=current_weather_api_model.main.temp_min,
+                wind=WindInfo(
+                    speed=current_weather_api_model.wind.speed,
+                    direction=current_weather_api_model.wind.deg
+                ),
+                humidity=current_weather_api_model.main.humidity,
+                pressure=current_weather_api_model.main.pressure,
+                daylight=DaylightInfo(
+                    sunrise=datetime.fromtimestamp(current_weather_api_model.sys.sunrise, tz=timezone.utc),
+                    sunset=datetime.fromtimestamp(current_weather_api_model.sys.sunset, tz=timezone.utc)
+                )
+            )
 
-            return enum_member
-        except KeyError:
-            valid_types = [member.name.lower() for member in ForecastType]
-            print(f"Invalid forecast type: '{forecast_type}'. Must be one of {valid_types}.")
+        if hourly_forecast_api_model and hourly_forecast_api_model.list:
+            # Limit to the configured max_hourly_forecast_items (e.g., 10 for next 10 hours)
+            for item in hourly_forecast_api_model.list[:self.max_hourly_forecast_items]:
+                weather_item = item.weather[0]
+                condition_str = weather_item.description.capitalize()
+                hourly_forecast_list.append(HourlyWeather(
+                    time=datetime.fromtimestamp(item.dt, tz=timezone.utc),
+                    temperature=item.main.temp,
+                    condition=condition_str,
+                    emoji=get_weather_emoji(weather_item.icon),
+                    wind=WindInfo(speed=item.wind.speed, direction=item.wind.deg),
+                    humidity=item.main.humidity,
+                    pressure=item.main.pressure
+                ))
+
+        if daily_forecast_api_model and daily_forecast_api_model.list:
+            for item in daily_forecast_api_model.list:
+                sunrise_time = datetime.fromtimestamp(item.sunrise, tz=timezone.utc) if item.sunrise else (current_weather.daylight.sunrise if current_weather and current_weather.daylight else None)
+                sunset_time = datetime.fromtimestamp(item.sunset, tz=timezone.utc) if item.sunset else (current_weather.daylight.sunset if current_weather and current_weather.daylight else None)
+                weather_item = item.weather[0]
+                condition_str = weather_item.description.capitalize()
+                daily_forecast_list.append(DailyWeather(
+                    forecast_date=datetime.fromtimestamp(item.dt, tz=timezone.utc).date(),
+                    max_temperature=item.temp.max, min_temperature=item.temp.min,
+                    condition=condition_str, emoji=get_weather_emoji(weather_item.icon),
+                    wind=WindInfo(speed=item.speed if item.speed else 0.0, direction=item.deg if item.deg else 0),
+                    humidity=item.humidity, daylight=DaylightInfo(sunrise=sunrise_time, sunset=sunset_time)
+                ))
+
+        if current_weather or hourly_forecast_list or daily_forecast_list:
+            return WeatherForecast(current=current_weather, hourly=hourly_forecast_list, daily=daily_forecast_list)
+        else:
+            print(f"Failed to retrieve sufficient weather data for {location_name} to transform.")
             return None
-        except Exception as e:
-            print(f"An unexpected error occurred while processing forecast type '{forecast_type}': {e}")
-            return None
 
-    def get_weather_forecast(self, location_name: str, forecast_type: str) -> WeatherData | HourlyForecastData | DailyForecastData | None:
-        """Gets detailed current weather forecast for a given location using its latitude and longitude.
+    async def get_weather_forecast(self, location_name: str) -> WeatherForecast | None:
+        """
+        Gets comprehensive weather forecast data (current, hourly, daily) for a given location.
 
-        Provides comprehensive weather data, including temperature, conditions, wind, etc.
+        This tool performs multiple API calls internally to gather all necessary data
+        and then transforms it into a unified, simplified WeatherForecast object.
 
         Args:
             location_name (str): The name of the location (e.g., "London", "Paris, FR").
-            forecast_type_api (str): The API endpoint URL for the specified forecast type.
 
         Returns:
-            Union[WeatherData, HourlyForecastData, DailyForecastData, None]:
-                An object containing detailed weather data, specific to the forecast type.
-                - WeatherData for current weather.
-                - HourlyForecastData for hourly forecasts.
-                - DailyForecastData for daily forecasts.
-                Returns None if data cannot be retrieved or an error occurs.
+            Optional[WeatherForecast]: A simplified Pydantic model containing current,
+                                     hourly, and daily weather data. Returns None if
+                                     data cannot be retrieved or an error occurs.
         """
-        if location_name:
-            georesult = self._get_coordinates(location_name)
-        else:
-            print("No location name specified.")
-            return None
-        if forecast_type:
-            forecast_type_api = self._get_forecast_type(forecast_type)
-        else:
-            print("No forecast type specified.")
-            return None
-        
-        if not georesult or not georesult.coordinates or georesult.coordinates.lat is None or georesult.coordinates.lon is None:
+        georesult = await self._get_coordinates(location_name)
+        if not georesult or not georesult.coordinates:
             print(f"Could not get valid coordinates for {location_name}")
             return None
-        coordinates = georesult.coordinates
 
-        params = {
-            'lat': coordinates.lat,
-            'lon': coordinates.lon,
-            'appid': self.api_key,
-            'units': "metric",
-        }
-        
-        api_url_str = forecast_type_api.value
+        lat, lon = georesult.coordinates.lat, georesult.coordinates.lon
 
-        try:
-            response = requests.get(api_url_str, params=params)
-            response.raise_for_status()
-            response_json = response.json()
+        current_weather_api_model: WeatherData | None = None
+        hourly_forecast_api_model: HourlyForecastData | None = None
+        daily_forecast_api_model: DailyForecastData | None = None
 
-            if forecast_type_api == ForecastType.CURRENT:
-                return WeatherData(**response_json)
-            elif forecast_type_api == ForecastType.HOURLY or forecast_type_api == ForecastType.TOMORROW:
-                # limit the number of hourly forecast items.
-                # The API can return up to 96 hourly forecasts (4 days).
-                # We cap it to MAX_HOURLY_FORECAST_ITEMS (e.g., X hours)
-                # to provide a more manageable dataset to the LLM. The context lenght
-                # is exceeded in my testing with llama3.1:8b for already 12 items
-                MAX_HOURLY_FORECAST_ITEMS = self.max_hourly_forecast_items
+        async with httpx.AsyncClient() as client:
+            # 1. Fetch Current Weather
+            current_params = {
+                "lat": lat,
+                "lon": lon,
+                "appid": self.api_key,
+                "units": "metric"
+            }
+            try:
+                current_response = await client.get(ForecastType.CURRENT.value, params=current_params)
+                current_response.raise_for_status()
+                current_weather_api_model = WeatherData(**current_response.json())
+            except httpx.RequestError as e:
+                print(f"Error fetching current weather for {location_name}: {e}")
+            except Exception as e:
+                print(f"Error parsing current weather data for {location_name}: {e}")
 
-                if 'list' in response_json and isinstance(response_json['list'], list):
-                    response_json['list'] = response_json['list'][:MAX_HOURLY_FORECAST_ITEMS]
-                    # Update to new number of items
-                    if 'cnt' in response_json:
-                        response_json['cnt'] = len(response_json['list'])
-                return HourlyForecastData(**response_json)
-            elif forecast_type_api == ForecastType.DAILY:
-                return DailyForecastData(**response_json)
-            else:
-                print(f"Unknown forecast type API URL: {api_url_str} for location {location_name}")
-                return None
+            # 2. Fetch Hourly Forecast
+            hourly_params = {
+                "lat": lat,
+                "lon": lon,
+                "appid": self.api_key,
+                "units": "metric"
+            }
+            try:
+                hourly_response = await client.get(ForecastType.HOURLY.value, params=hourly_params)
+                hourly_response.raise_for_status()
+                hourly_forecast_api_model = HourlyForecastData(**hourly_response.json())
+            except httpx.RequestError as e:
+                print(f"Error fetching hourly forecast for {location_name}: {e}")
+            except Exception as e:
+                print(f"Error parsing hourly forecast data for {location_name}: {e}")
 
-        except requests.exceptions.RequestException as e:
-            print(f"Weather API request error for {location_name} ({api_url_str}): {e}")
-            return None
-        except Exception as e: 
-            print(f"Error processing weather data for {location_name} ({api_url_str}): {e}")
-            return None
+            # 3. Fetch Daily Forecast
+            daily_params = {
+                "lat": lat,
+                "lon": lon,
+                "appid": self.api_key,
+                "units": "metric",
+                "cnt": 16
+            }
+            try:
+                daily_response = await client.get(ForecastType.DAILY.value, params=daily_params)
+                daily_response.raise_for_status()
+                daily_forecast_api_model = DailyForecastData(**daily_response.json())
+            except httpx.RequestError as e:
+                print(f"Error fetching daily forecast for {location_name}: {e}.")
+            except Exception as e:
+                print(f"Error parsing daily forecast data for {location_name}: {e}")
+
+        # Transform the API data
+        return self._transform_api_data_to_weather_forecast(
+            location_name=location_name,
+            current_weather_api_model=current_weather_api_model,
+            hourly_forecast_api_model=hourly_forecast_api_model,
+            daily_forecast_api_model=daily_forecast_api_model
+        )
