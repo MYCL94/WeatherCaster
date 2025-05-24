@@ -13,9 +13,16 @@ logger = logging.getLogger(__name__)
 class ForecastType(str, Enum):
     """Lists all available forecast types and their corresponding API endpoint URLs."""
     CURRENT = "https://api.openweathermap.org/data/2.5/weather" # Everything related to today
-    TOMORROW = "https://pro.openweathermap.org/data/2.5/forecast/hourly" # In case LLM chooses, everything related to tomorrow same as hourly
     HOURLY = "https://pro.openweathermap.org/data/2.5/forecast/hourly" # Hourly forecast for 4 days (max. 96 timestamps)
     DAILY = "https://api.openweathermap.org/data/2.5/forecast/daily" # Daily Forecast 16 Days
+    TOMORROW = "https://api.openweathermap.org/data/2.5/forecast/daily" # For "tomorrow" queries, data is fetched using the daily forecast
+
+class ForecastRange(str, Enum):
+    """Lists all available forecast types and their corresponding API endpoint URLs."""
+    CURRENT = "current"
+    HOURLY = "hourly"
+    DAILY = "daily"
+    TOMORROW = "tomorrow"
 
 def get_weather_emoji(icon_id: str) -> str:
     """Maps an OpenWeatherMap icon ID to an appropriate emoji.
@@ -179,7 +186,7 @@ class WeatherAPIClient:
             logger.warning(f"Failed to retrieve sufficient weather data for {location_name} to transform.")
             return None
 
-    async def get_weather_forecast(self, location_name: str) -> WeatherForecast | None:
+    async def get_weather_forecast(self, location_name: str, forecast_range: ForecastRange) -> WeatherForecast | None:
         """
         Gets comprehensive weather forecast data (current, hourly, daily) for a given location.
 
@@ -188,6 +195,7 @@ class WeatherAPIClient:
 
         Args:
             location_name (str): The name of the location (e.g., "London", "Paris, FR").
+            forecast_range (str): The timerange selected by the user. Available options are "current", "hourly", and "daily".
 
         Returns:
             Optional[WeatherForecast]: A simplified Pydantic model containing current,
@@ -213,14 +221,15 @@ class WeatherAPIClient:
                 "appid": self.api_key,
                 "units": "metric"
             }
-            try:
-                current_response = await client.get(ForecastType.CURRENT.value, params=current_params)
-                current_response.raise_for_status()
-                current_weather_api_model = WeatherData(**current_response.json())
-            except httpx.RequestError as e:
-                logger.error(f"Error fetching current weather for {location_name}: {e}", exc_info=True)
-            except Exception as e:
-                logger.error(f"Error parsing current weather data for {location_name}: {e}", exc_info=True)
+            if forecast_range.lower() == ForecastRange.CURRENT:
+                try:
+                    current_response = await client.get(ForecastType.CURRENT.value, params=current_params)
+                    current_response.raise_for_status()
+                    current_weather_api_model = WeatherData(**current_response.json())
+                except httpx.RequestError as e:
+                    logger.error(f"Error fetching current weather for {location_name}: {e}", exc_info=True)
+                except Exception as e:
+                    logger.error(f"Error parsing current weather data for {location_name}: {e}", exc_info=True)
 
             # 2. Fetch Hourly Forecast
             hourly_params = {
@@ -229,14 +238,15 @@ class WeatherAPIClient:
                 "appid": self.api_key,
                 "units": "metric"
             }
-            try:
-                hourly_response = await client.get(ForecastType.HOURLY.value, params=hourly_params)
-                hourly_response.raise_for_status()
-                hourly_forecast_api_model = HourlyForecastData(**hourly_response.json())
-            except httpx.RequestError as e:
-                logger.error(f"Error fetching hourly forecast for {location_name}: {e}", exc_info=True)
-            except Exception as e:
-                logger.error(f"Error parsing hourly forecast data for {location_name}: {e}", exc_info=True)
+            if forecast_range.lower() == ForecastRange.HOURLY:
+                try:
+                    hourly_response = await client.get(ForecastType.HOURLY.value, params=hourly_params)
+                    hourly_response.raise_for_status()
+                    hourly_forecast_api_model = HourlyForecastData(**hourly_response.json())
+                except httpx.RequestError as e:
+                    logger.error(f"Error fetching hourly forecast for {location_name}: {e}", exc_info=True)
+                except Exception as e:
+                    logger.error(f"Error parsing hourly forecast data for {location_name}: {e}", exc_info=True)
 
             # 3. Fetch Daily Forecast
             daily_params = {
@@ -246,14 +256,15 @@ class WeatherAPIClient:
                 "units": "metric",
                 "cnt": 16
             }
-            try:
-                daily_response = await client.get(ForecastType.DAILY.value, params=daily_params)
-                daily_response.raise_for_status()
-                daily_forecast_api_model = DailyForecastData(**daily_response.json())
-            except httpx.RequestError as e:
-                logger.error(f"Error fetching daily forecast for {location_name}: {e}", exc_info=True)
-            except Exception as e:
-                logger.error(f"Error parsing daily forecast data for {location_name}: {e}", exc_info=True)
+            if forecast_range.lower() == ForecastRange.DAILY or forecast_range == ForecastRange.TOMORROW:
+                try:
+                    daily_response = await client.get(ForecastType.DAILY.value, params=daily_params)
+                    daily_response.raise_for_status()
+                    daily_forecast_api_model = DailyForecastData(**daily_response.json())
+                except httpx.RequestError as e:
+                    logger.error(f"Error fetching daily forecast for {location_name}: {e}", exc_info=True)
+                except Exception as e:
+                    logger.error(f"Error parsing daily forecast data for {location_name}: {e}", exc_info=True)
 
         # Transform the API data
         return self._transform_api_data_to_weather_forecast(

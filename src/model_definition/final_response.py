@@ -45,6 +45,6 @@ class DailyWeather(BaseModel):
     daylight: DaylightInfo = Field(..., description="Sunrise and sunset times for this forecasted day.")
 
 class WeatherForecast(BaseModel):
-    current: CurrentWeather = Field(..., description="The current weather conditions.")
-    hourly: List[HourlyWeather] = Field(..., description="A list of hourly weather forecasts.")
-    daily: List[DailyWeather] = Field(..., description="A list of daily weather forecasts.")
+    current: CurrentWeather | None = Field(..., description="The current weather conditions.")
+    hourly: List[HourlyWeather] | None = Field(..., description="A list of hourly weather forecasts.")
+    daily: List[DailyWeather] | None = Field(..., description="A list of daily weather forecasts.")

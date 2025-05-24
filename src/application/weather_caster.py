@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import AsyncGenerator
 from dotenv import load_dotenv
 from pydantic_ai import Agent, Tool
@@ -24,9 +25,9 @@ class WeatherCaster:
                            tools=[Tool(self.weather_client.get_weather_forecast)
                                   ],
                            system_prompt=AGENT_SYSTEM_PROMPT,
-                           retries=3,
-                           output_retries=3,
-                           output_type=str | WeatherForecast # bigger models needed such as gpt-4.x or gpt-4o
+                           retries=5,
+                           output_retries=5,
+                           output_type=str # WeatherForecast  bigger models needed such as gpt-4.x or gpt-4o
                            )
 
     async def get_response(self, user_query: str) -> AsyncGenerator:
@@ -41,12 +42,14 @@ class WeatherCaster:
         try:
             forecast_data = await self.agent.run(user_query)
             if forecast_data:
+                if isinstance(forecast_data.output, str):
+                    # Remove think tag from thinking models
+                    cleaned_content = re.sub(r"<think>.*?</think>\n?", "", forecast_data.output)
+                    yield cleaned_content
+
                 if isinstance (forecast_data.output, WeatherForecast):
                     # if output_type is given
                     yield format_weather_summary(forecast_data.output)
-                else:
-                    # str response
-                    yield forecast_data.output
             else:
                 logger.warning("Agent run completed but no forecast_data was returned.")
                 yield "Sorry, I could not retrieve any information for your query."

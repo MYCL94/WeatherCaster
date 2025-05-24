@@ -74,6 +74,12 @@ The WeatherCaster chatbot operates through the following flow:
 <img src="assets/User_Interaction_Flow.png"/>
 </p>
 
+### Sequence Diagram
+
+<p align="center">
+<img src="assets/Sequence_Diagram.png"/>
+</p>
+
 ## Setup and Installation
 
 ### Prerequisites
